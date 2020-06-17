@@ -122,43 +122,34 @@ module.exports = function(command, files = [], _options) {
             `Downloading translations for \`${options.fileName}\``
           ).start();
 
+          const downloadOptions = Object.assign({
+            format: "HIERARCHICAL_JSON",
+          }, options);
+
           return onesky
-            .getMultilingualFile(options)
+            .getFile(downloadOptions)
             .then(response => {
               downloadingSpinner.succeed();
 
-              const translations = JSON.parse(response);
-              const translationCodes = Object.keys(translations);
+              const lang = JSON.parse(response);
+              const code = options.language;
+              const ext = path.parse(options.fileName).ext;
+              const filename = `${code}${ext}`;
+              const filepath = path.join(file, filename);
+              const savingSpinner = ora(`Saving \`${filepath}\``).start();
 
-              langsList.forEach(code => {
-                const lang = translations[code];
-                const ext = path.parse(options.fileName).ext;
-                const filename = `${code}${ext}`;
-                const filepath = path.join(file, filename);
-                const savingSpinner = ora(`Saving \`${filepath}\``).start();
-
-                if (!lang || !lang.translation) {
-                  savingSpinner.fail(
-                    `There is no translation for \`${code}\` code. Found \`${translationCodes.join(
-                      ", "
-                    )}\` instead`
-                  );
-                  return;
-                }
-
-                fs
-                  .ensureFile(filepath)
-                  .then(() => {
-                    return fs.writeJson(filepath, lang.translation, {
-                      spaces: 2
-                    });
-                  })
-                  .catch(({ message }) => {
-                    oneSkyErrorMessageHandler(savingSpinner, null, message);
+              fs
+                .ensureFile(filepath)
+                .then(() => {
+                  return fs.writeJson(filepath, lang, {
+                    spaces: 2
                   });
+                })
+                .catch(({ message }) => {
+                  oneSkyErrorMessageHandler(savingSpinner, null, message);
+                });
 
-                savingSpinner.succeed();
-              });
+              savingSpinner.succeed();
             })
             .catch(({ message, code }) => {
               oneSkyErrorMessageHandler(downloadingSpinner, code, message);
